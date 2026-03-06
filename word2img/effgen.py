@@ -99,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         words = generate_passphrase(num_words=args.num_words)
+        passphrase = " ".join(words)
+        print(f"Passphrase: {passphrase}", flush=True)
         api_key = resolve_api_key()
         if args.mnemonic_mode == "scene":
             mnemonic_prompt = build_mnemonic_prompt(words)
@@ -109,12 +111,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    passphrase = " ".join(words)
     output_name = f"{_safe_filename_from_prompt('-'.join(words))}.png"
     output_path = Path.cwd() / output_name
     output_path.write_bytes(result["image_bytes"])
 
-    print(f"Passphrase: {passphrase}")
     print(f"Saved image: {output_path}")
     print(f"Image type: mnemonic {args.mnemonic_mode} (no text)")
     return 0
