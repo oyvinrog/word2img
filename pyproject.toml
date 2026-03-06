@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "word2img"
+version = "0.1.0"
+description = "Generate images from lists of words with gpt-image-1."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "keyring>=25.0.0",
+  "openai>=1.0.0",
+]
+
+[project.scripts]
+word2img = "word2img.__main__:main"
+word2img-effgen = "word2img.effgen:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
