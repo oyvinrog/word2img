@@ -3,6 +3,8 @@ from __future__ import annotations
 import base64
 from typing import Any, TypedDict
 
+from .prompts import PromptType, build_normal_prompt, build_prompt
+
 
 class Word2ImgResult(TypedDict):
     image_bytes: bytes
@@ -15,10 +17,7 @@ MODEL_NAME = "gpt-image-1"
 
 
 def _build_prompt(words: list[str]) -> str:
-    cleaned = [word.strip() for word in words if word and word.strip()]
-    if not cleaned:
-        raise ValueError("words must contain at least one non-empty value")
-    return "-".join(cleaned)
+    return build_normal_prompt(words)
 
 
 def _extract_b64_image(response: Any) -> str:
@@ -64,5 +63,5 @@ def text_to_img(prompt: str, api_key: str) -> Word2ImgResult:
     return _generate_from_prompt(prompt.strip(), api_key=api_key)
 
 
-def words_to_img(words: list[str], api_key: str) -> Word2ImgResult:
-    return _generate_from_prompt(_build_prompt(words), api_key=api_key)
+def words_to_img(words: list[str], api_key: str, prompt_type: PromptType = "loci") -> Word2ImgResult:
+    return _generate_from_prompt(build_prompt(words, prompt_type=prompt_type), api_key=api_key)

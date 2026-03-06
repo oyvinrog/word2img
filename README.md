@@ -22,12 +22,19 @@ with open("frog-does-dancing.png", "wb") as f:
     f.write(result["image_bytes"])
 ```
 
-The prompt sent to the model is the hyphen-joined string: `frog-does-dancing`.
+By default, `words_to_img(...)` uses the `loci` prompt style: one memory-palace scene with the words placed in order along a path.
+Override with `prompt_type="normal"` for the original hyphen-joined prompt or `prompt_type="scene"` for a single surreal mnemonic scene.
 
 ## CLI usage
 
 ```bash
 python -m word2img
+```
+
+Or choose a prompt style explicitly:
+
+```bash
+python -m word2img --prompt-type normal
 ```
 
 You will be prompted for:

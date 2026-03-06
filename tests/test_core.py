@@ -40,7 +40,7 @@ def test_words_to_img_calls_openai_and_returns_schema(monkeypatch: pytest.Monkey
     fake_openai_module = types.SimpleNamespace(OpenAI=FakeClient)
     monkeypatch.setitem(__import__("sys").modules, "openai", fake_openai_module)
 
-    result = words_to_img(["frog", "does", "dancing"], api_key="test-key")
+    result = words_to_img(["frog", "does", "dancing"], api_key="test-key", prompt_type="normal")
 
     assert called["api_key"] == "test-key"
     assert called["kwargs"]["model"] == "gpt-image-1"
@@ -51,9 +51,42 @@ def test_words_to_img_calls_openai_and_returns_schema(monkeypatch: pytest.Monkey
     assert result["model"] == "gpt-image-1"
 
 
+def test_words_to_img_defaults_to_loci_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    image_bytes = b"fake-png-bytes"
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    called = {}
+
+    class FakeImages:
+        def generate(self, **kwargs):
+            called["kwargs"] = kwargs
+            return types.SimpleNamespace(
+                data=[types.SimpleNamespace(b64_json=encoded)],
+            )
+
+    class FakeClient:
+        def __init__(self, api_key: str):
+            called["api_key"] = api_key
+            self.images = FakeImages()
+
+    fake_openai_module = types.SimpleNamespace(OpenAI=FakeClient)
+    monkeypatch.setitem(__import__("sys").modules, "openai", fake_openai_module)
+
+    result = words_to_img(["frog", "does", "dancing"], api_key="test-key")
+
+    assert called["api_key"] == "test-key"
+    assert "memory-palace style geographic scene" in called["kwargs"]["prompt"]
+    assert "at locus 1, depict frog" in called["kwargs"]["prompt"]
+    assert result["prompt"] == called["kwargs"]["prompt"]
+
+
 def test_words_to_img_raises_when_api_key_missing() -> None:
     with pytest.raises(RuntimeError, match="api_key is required"):
         words_to_img(["frog"], api_key="")
+
+
+def test_words_to_img_rejects_unknown_prompt_type() -> None:
+    with pytest.raises(ValueError, match="unsupported prompt_type"):
+        words_to_img(["frog"], api_key="test-key", prompt_type="bogus")  # type: ignore[arg-type]
 
 
 def test_text_to_img_uses_prompt_as_is(monkeypatch: pytest.MonkeyPatch) -> None:

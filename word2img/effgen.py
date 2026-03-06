@@ -10,6 +10,7 @@ from urllib.request import urlopen
 
 from .auth import resolve_api_key
 from .core import text_to_img
+from .prompts import build_loci_prompt, build_scene_prompt
 
 EFF_LARGE_WORDLIST_URL = "https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt"
 TRANSLATION_MODEL = "gpt-4.1-mini"
@@ -77,31 +78,7 @@ def generate_passphrase(num_words: int = 6, word_pool: list[str] | None = None) 
 
 
 def build_mnemonic_prompt(words: list[str]) -> str:
-    if not words:
-        raise ValueError("words must be non-empty")
-    word_csv = ", ".join(words)
-    return (
-        "Create a vivid, memorable scene that clearly represents these concepts as objects or actions: "
-        f"{word_csv}. Make it playful, surreal, and easy to recall. "
-        "Important: do not include any written text, letters, numbers, captions, signs, or typography in the image."
-    )
-
-
-def build_loci_prompt(words: list[str]) -> str:
-    if not words:
-        raise ValueError("words must be non-empty")
-    placements = "; ".join(
-        f"at locus {idx + 1}, depict {word} as a concrete visual object or action"
-        for idx, word in enumerate(words)
-    )
-    return (
-        "Create a single memory-palace style geographic scene with a clearly visible walkable path that a person could follow on foot. "
-        "Show a sequence of distinct, easy-to-recognize locations along the path, like separate landmarks or stops, so the viewer can mentally walk through them in order. "
-        f"Place concepts in strict order along the route: {placements}. "
-        "Use strong visual separation between loci, with obvious transitions from one stop to the next, so order is unmistakable from start to finish. "
-        "Compose the scene from a human walking viewpoint, not a flat map, and make the route progression obvious. "
-        "Important: no written text, letters, numbers, captions, signs, or typography in the image."
-    )
+    return build_scene_prompt(words)
 
 
 def _resolve_language_name(lang: str) -> str:
