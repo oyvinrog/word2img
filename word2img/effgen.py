@@ -95,9 +95,11 @@ def build_loci_prompt(words: list[str]) -> str:
         for idx, word in enumerate(words)
     )
     return (
-        "Create a single memory-palace style geographic scene with a clear walking route through distinct landmarks. "
+        "Create a single memory-palace style geographic scene with a clearly visible walkable path that a person could follow on foot. "
+        "Show a sequence of distinct, easy-to-recognize locations along the path, like separate landmarks or stops, so the viewer can mentally walk through them in order. "
         f"Place concepts in strict order along the route: {placements}. "
-        "Use strong visual separation between loci so order is obvious from left-to-right or near-to-far progression. "
+        "Use strong visual separation between loci, with obvious transitions from one stop to the next, so order is unmistakable from start to finish. "
+        "Compose the scene from a human walking viewpoint, not a flat map, and make the route progression obvious. "
         "Important: no written text, letters, numbers, captions, signs, or typography in the image."
     )
 
@@ -107,6 +109,41 @@ def _resolve_language_name(lang: str) -> str:
     if not normalized:
         raise ValueError("lang must be non-empty")
     return LANGUAGE_ALIASES.get(normalized.lower(), normalized)
+
+
+def _parse_translation_output(text: str) -> list[str]:
+    raw = text.strip()
+    if not raw:
+        raise RuntimeError("translation response was empty")
+
+    candidates = [raw]
+    if "```" in raw:
+        fenced_parts = raw.split("```")
+        for idx in range(1, len(fenced_parts), 2):
+            fenced = fenced_parts[idx].strip()
+            if "\n" in fenced:
+                _, remainder = fenced.split("\n", 1)
+                candidates.append(remainder.strip())
+            candidates.append(fenced)
+    array_start = raw.find("[")
+    array_end = raw.rfind("]")
+    if array_start != -1 and array_end != -1 and array_start < array_end:
+        candidates.append(raw[array_start : array_end + 1])
+
+    translated: object | None = None
+    for candidate in candidates:
+        try:
+            translated = json.loads(candidate)
+            break
+        except json.JSONDecodeError:
+            continue
+
+    if not isinstance(translated, list):
+        raise RuntimeError("translation response was not valid JSON")
+    cleaned = [str(word).strip() for word in translated]
+    if any(not word for word in cleaned):
+        raise RuntimeError("translation response included an empty word")
+    return cleaned
 
 
 def translate_words(words: list[str], lang: str, api_key: str) -> list[str]:
@@ -131,15 +168,9 @@ def translate_words(words: list[str], lang: str, api_key: str) -> list[str]:
         ),
     )
 
-    try:
-        translated = json.loads(response.output_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("translation response was not valid JSON") from exc
-    if not isinstance(translated, list) or len(translated) != len(words):
+    cleaned = _parse_translation_output(response.output_text)
+    if len(cleaned) != len(words):
         raise RuntimeError("translation response did not return the expected number of words")
-    cleaned = [str(word).strip() for word in translated]
-    if any(not word for word in cleaned):
-        raise RuntimeError("translation response included an empty word")
     return cleaned
 
 

@@ -4,6 +4,7 @@ import pytest
 
 from word2img.effgen import (
     _parse_eff_wordlist,
+    _parse_translation_output,
     _resolve_language_name,
     build_loci_prompt,
     build_mnemonic_prompt,
@@ -44,14 +45,31 @@ def test_build_mnemonic_prompt_requests_non_text_scene() -> None:
 def test_build_loci_prompt_requests_ordered_geography() -> None:
     prompt = build_loci_prompt(["alpha", "bravo", "charlie"])
     assert "memory-palace style geographic scene" in prompt
+    assert "clearly visible walkable path" in prompt
+    assert "mentally walk through them in order" in prompt
     assert "at locus 1, depict alpha" in prompt
     assert "at locus 2, depict bravo" in prompt
     assert "at locus 3, depict charlie" in prompt
+    assert "human walking viewpoint" in prompt
     assert "no written text" in prompt
 
 
 def test_resolve_language_name_supports_norwegian_code() -> None:
     assert _resolve_language_name("no") == "Norwegian"
+
+
+def test_parse_translation_output_accepts_plain_json_array() -> None:
+    assert _parse_translation_output('["alfa", "bravo"]') == ["alfa", "bravo"]
+
+
+def test_parse_translation_output_accepts_fenced_json_array() -> None:
+    text = '```json\n["alfa", "bravo"]\n```'
+    assert _parse_translation_output(text) == ["alfa", "bravo"]
+
+
+def test_parse_translation_output_accepts_embedded_json_array() -> None:
+    text = 'Here is the translation:\n["alfa", "bravo"]'
+    assert _parse_translation_output(text) == ["alfa", "bravo"]
 
 
 def test_effgen_cli_generates_image(
