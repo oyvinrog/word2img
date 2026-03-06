@@ -54,3 +54,4 @@ Options:
 - `-n`, `--num-words`: number of words (default: `6`)
 
 On first run, the tool downloads and caches the official EFF large wordlist at `~/.cache/word2img/eff_large_wordlist.txt`.
+The generated image is a mnemonic scene prompt (not literal rendered text), with explicit instruction to avoid text/letters in the image.

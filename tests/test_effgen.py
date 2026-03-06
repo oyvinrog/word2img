@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from word2img.effgen import _parse_eff_wordlist, generate_passphrase, main
+from word2img.effgen import _parse_eff_wordlist, build_mnemonic_prompt, generate_passphrase, main
 
 
 def test_parse_eff_wordlist() -> None:
@@ -28,6 +28,12 @@ def test_generate_passphrase_validates_count() -> None:
         generate_passphrase(0, word_pool=["a"])
 
 
+def test_build_mnemonic_prompt_requests_non_text_scene() -> None:
+    prompt = build_mnemonic_prompt(["alpha", "bravo", "charlie"])
+    assert "alpha, bravo, charlie" in prompt
+    assert "do not include any written text" in prompt
+
+
 def test_effgen_cli_generates_image(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -40,22 +46,23 @@ def test_effgen_cli_generates_image(
     )
     monkeypatch.setattr("word2img.effgen.resolve_api_key", lambda: "test-key")
 
-    def fake_words_to_img(words, api_key):
-        assert words == ["alpha", "bravo", "charlie"]
+    def fake_text_to_img(prompt, api_key):
+        assert "alpha, bravo, charlie" in prompt
+        assert "do not include any written text" in prompt
         assert api_key == "test-key"
         return {
             "image_bytes": b"img",
             "mime_type": "image/png",
-            "prompt": "alpha-bravo-charlie",
+            "prompt": prompt,
             "model": "gpt-image-1",
         }
 
-    monkeypatch.setattr("word2img.effgen.words_to_img", fake_words_to_img)
+    monkeypatch.setattr("word2img.effgen.text_to_img", fake_text_to_img)
 
     rc = main(["--num-words", "3"])
     out = capsys.readouterr().out
 
     assert rc == 0
     assert "Passphrase: alpha bravo charlie" in out
+    assert "Image type: mnemonic scene (no text)" in out
     assert (tmp_path / "alpha-bravo-charlie.png").read_bytes() == b"img"
-

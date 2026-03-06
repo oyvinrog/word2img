@@ -33,9 +33,7 @@ def _extract_b64_image(response: Any) -> str:
     return b64_data
 
 
-def words_to_img(words: list[str], api_key: str) -> Word2ImgResult:
-    prompt = _build_prompt(words)
-
+def _generate_from_prompt(prompt: str, api_key: str) -> Word2ImgResult:
     if not api_key or not api_key.strip():
         raise RuntimeError("api_key is required")
 
@@ -58,3 +56,13 @@ def words_to_img(words: list[str], api_key: str) -> Word2ImgResult:
         "prompt": prompt,
         "model": MODEL_NAME,
     }
+
+
+def text_to_img(prompt: str, api_key: str) -> Word2ImgResult:
+    if not prompt or not prompt.strip():
+        raise ValueError("prompt must be non-empty")
+    return _generate_from_prompt(prompt.strip(), api_key=api_key)
+
+
+def words_to_img(words: list[str], api_key: str) -> Word2ImgResult:
+    return _generate_from_prompt(_build_prompt(words), api_key=api_key)

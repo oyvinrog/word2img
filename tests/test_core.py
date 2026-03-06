@@ -3,7 +3,7 @@ import types
 
 import pytest
 
-from word2img.core import _build_prompt, words_to_img
+from word2img.core import _build_prompt, text_to_img, words_to_img
 
 
 def test_build_prompt_hyphen_joins_words() -> None:
@@ -54,3 +54,28 @@ def test_words_to_img_calls_openai_and_returns_schema(monkeypatch: pytest.Monkey
 def test_words_to_img_raises_when_api_key_missing() -> None:
     with pytest.raises(RuntimeError, match="api_key is required"):
         words_to_img(["frog"], api_key="")
+
+
+def test_text_to_img_uses_prompt_as_is(monkeypatch: pytest.MonkeyPatch) -> None:
+    image_bytes = b"fake-png-bytes"
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    called = {}
+
+    class FakeImages:
+        def generate(self, **kwargs):
+            called["kwargs"] = kwargs
+            return types.SimpleNamespace(
+                data=[types.SimpleNamespace(b64_json=encoded)],
+            )
+
+    class FakeClient:
+        def __init__(self, api_key: str):
+            called["api_key"] = api_key
+            self.images = FakeImages()
+
+    fake_openai_module = types.SimpleNamespace(OpenAI=FakeClient)
+    monkeypatch.setitem(__import__("sys").modules, "openai", fake_openai_module)
+
+    result = text_to_img("A surreal frog dance scene", api_key="test-key")
+    assert called["kwargs"]["prompt"] == "A surreal frog dance scene"
+    assert result["image_bytes"] == image_bytes
