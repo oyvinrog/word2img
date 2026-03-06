@@ -71,15 +71,39 @@ def build_mnemonic_prompt(words: list[str]) -> str:
     )
 
 
+def build_loci_prompt(words: list[str]) -> str:
+    if not words:
+        raise ValueError("words must be non-empty")
+    placements = "; ".join(
+        f"at locus {idx + 1}, depict {word} as a concrete visual object or action"
+        for idx, word in enumerate(words)
+    )
+    return (
+        "Create a single memory-palace style geographic scene with a clear walking route through distinct landmarks. "
+        f"Place concepts in strict order along the route: {placements}. "
+        "Use strong visual separation between loci so order is obvious from left-to-right or near-to-far progression. "
+        "Important: no written text, letters, numbers, captions, signs, or typography in the image."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate an EFF passphrase and image mnemonic.")
     parser.add_argument("-n", "--num-words", type=int, default=6, help="Number of passphrase words (default: 6)")
+    parser.add_argument(
+        "--mnemonic-mode",
+        choices=("loci", "scene"),
+        default="loci",
+        help="Mnemonic prompt style (default: loci)",
+    )
     args = parser.parse_args(argv)
 
     try:
         words = generate_passphrase(num_words=args.num_words)
         api_key = resolve_api_key()
-        mnemonic_prompt = build_mnemonic_prompt(words)
+        if args.mnemonic_mode == "scene":
+            mnemonic_prompt = build_mnemonic_prompt(words)
+        else:
+            mnemonic_prompt = build_loci_prompt(words)
         result = text_to_img(mnemonic_prompt, api_key=api_key)
     except Exception as exc:  # pragma: no cover - simple CLI failure path
         print(f"Error: {exc}", file=sys.stderr)
@@ -92,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Passphrase: {passphrase}")
     print(f"Saved image: {output_path}")
-    print("Image type: mnemonic scene (no text)")
+    print(f"Image type: mnemonic {args.mnemonic_mode} (no text)")
     return 0
 
 
