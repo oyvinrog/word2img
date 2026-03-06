@@ -53,6 +53,7 @@ word2img-effgen
 Options:
 - `-n`, `--num-words`: number of words (default: `6`)
 - `--mnemonic-mode`: `loci` (default) or `scene`
+- `--lang`: translate the selected passphrase before generating the mnemonic image. Example: `--lang no` for Norwegian
 
 On first run, the tool downloads and caches the official EFF large wordlist at `~/.cache/word2img/eff_large_wordlist.txt`.
 Default mode is `loci`: one geographic memory-palace image with landmarks in strict passphrase order.

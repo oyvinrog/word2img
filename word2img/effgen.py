@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import secrets
 import sys
 from pathlib import Path
@@ -11,6 +12,21 @@ from .auth import resolve_api_key
 from .core import text_to_img
 
 EFF_LARGE_WORDLIST_URL = "https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt"
+TRANSLATION_MODEL = "gpt-4.1-mini"
+LANGUAGE_ALIASES = {
+    "da": "Danish",
+    "de": "German",
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "it": "Italian",
+    "nb": "Norwegian Bokmal",
+    "nl": "Dutch",
+    "nn": "Norwegian Nynorsk",
+    "no": "Norwegian",
+    "pt": "Portuguese",
+    "sv": "Swedish",
+}
 
 
 def _default_cache_path() -> Path:
@@ -86,6 +102,47 @@ def build_loci_prompt(words: list[str]) -> str:
     )
 
 
+def _resolve_language_name(lang: str) -> str:
+    normalized = lang.strip()
+    if not normalized:
+        raise ValueError("lang must be non-empty")
+    return LANGUAGE_ALIASES.get(normalized.lower(), normalized)
+
+
+def translate_words(words: list[str], lang: str, api_key: str) -> list[str]:
+    if not words:
+        raise ValueError("words must be non-empty")
+    language_name = _resolve_language_name(lang)
+
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise RuntimeError("openai package is required. Install dependencies first.") from exc
+
+    client = OpenAI(api_key=api_key.strip())
+    response = client.responses.create(
+        model=TRANSLATION_MODEL,
+        input=(
+            f"Translate this ordered list of English passphrase words into {language_name}. "
+            "Preserve order. Return exactly one translated word per input word. "
+            "If a direct translation is awkward or would need multiple words, choose the closest single-word equivalent. "
+            "Return only a JSON array of strings.\n\n"
+            f"{json.dumps(words)}"
+        ),
+    )
+
+    try:
+        translated = json.loads(response.output_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("translation response was not valid JSON") from exc
+    if not isinstance(translated, list) or len(translated) != len(words):
+        raise RuntimeError("translation response did not return the expected number of words")
+    cleaned = [str(word).strip() for word in translated]
+    if any(not word for word in cleaned):
+        raise RuntimeError("translation response included an empty word")
+    return cleaned
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate an EFF passphrase and image mnemonic.")
     parser.add_argument("-n", "--num-words", type=int, default=6, help="Number of passphrase words (default: 6)")
@@ -95,23 +152,29 @@ def main(argv: list[str] | None = None) -> int:
         default="loci",
         help="Mnemonic prompt style (default: loci)",
     )
+    parser.add_argument("--lang", help="Translate the passphrase into this language before building the mnemonic")
     args = parser.parse_args(argv)
 
     try:
         words = generate_passphrase(num_words=args.num_words)
         passphrase = " ".join(words)
-        print(f"Passphrase: {passphrase}", flush=True)
         api_key = resolve_api_key()
+        prompt_words = words
+        print(f"Passphrase: {passphrase}", flush=True)
+        if args.lang:
+            prompt_words = translate_words(words, args.lang, api_key=api_key)
+            language_name = _resolve_language_name(args.lang)
+            print(f"Translated passphrase ({language_name}): {' '.join(prompt_words)}", flush=True)
         if args.mnemonic_mode == "scene":
-            mnemonic_prompt = build_mnemonic_prompt(words)
+            mnemonic_prompt = build_mnemonic_prompt(prompt_words)
         else:
-            mnemonic_prompt = build_loci_prompt(words)
+            mnemonic_prompt = build_loci_prompt(prompt_words)
         result = text_to_img(mnemonic_prompt, api_key=api_key)
     except Exception as exc:  # pragma: no cover - simple CLI failure path
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    output_name = f"{_safe_filename_from_prompt('-'.join(words))}.png"
+    output_name = f"{_safe_filename_from_prompt('-'.join(prompt_words))}.png"
     output_path = Path.cwd() / output_name
     output_path.write_bytes(result["image_bytes"])
 

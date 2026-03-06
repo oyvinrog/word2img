@@ -2,7 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from word2img.effgen import _parse_eff_wordlist, build_loci_prompt, build_mnemonic_prompt, generate_passphrase, main
+from word2img.effgen import (
+    _parse_eff_wordlist,
+    _resolve_language_name,
+    build_loci_prompt,
+    build_mnemonic_prompt,
+    generate_passphrase,
+    main,
+)
 
 
 def test_parse_eff_wordlist() -> None:
@@ -43,6 +50,10 @@ def test_build_loci_prompt_requests_ordered_geography() -> None:
     assert "no written text" in prompt
 
 
+def test_resolve_language_name_supports_norwegian_code() -> None:
+    assert _resolve_language_name("no") == "Norwegian"
+
+
 def test_effgen_cli_generates_image(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -77,6 +88,47 @@ def test_effgen_cli_generates_image(
     assert rc == 0
     assert "Image type: mnemonic loci (no text)" in out
     assert (tmp_path / "alpha-bravo-charlie.png").read_bytes() == b"img"
+
+
+def test_effgen_cli_lang_translates_words_before_image_generation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "word2img.effgen.generate_passphrase",
+        lambda num_words: ["alpha", "bravo", "charlie"][:num_words],
+    )
+    monkeypatch.setattr("word2img.effgen.resolve_api_key", lambda: "test-key")
+    monkeypatch.setattr(
+        "word2img.effgen.translate_words",
+        lambda words, lang, api_key: ["alfa", "bravo", "charlie"],
+    )
+
+    def fake_text_to_img(prompt, api_key):
+        out = capsys.readouterr().out
+        assert "Passphrase: alpha bravo charlie" in out
+        assert "Translated passphrase (Norwegian): alfa bravo charlie" in out
+        assert "at locus 1, depict alfa" in prompt
+        assert "at locus 2, depict bravo" in prompt
+        assert "at locus 3, depict charlie" in prompt
+        assert api_key == "test-key"
+        return {
+            "image_bytes": b"img",
+            "mime_type": "image/png",
+            "prompt": prompt,
+            "model": "gpt-image-1",
+        }
+
+    monkeypatch.setattr("word2img.effgen.text_to_img", fake_text_to_img)
+
+    rc = main(["--num-words", "3", "--lang", "no"])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "Image type: mnemonic loci (no text)" in out
+    assert (tmp_path / "alfa-bravo-charlie.png").read_bytes() == b"img"
 
 
 def test_effgen_cli_scene_mode_uses_scene_prompt(
