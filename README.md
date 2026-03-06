@@ -1,6 +1,6 @@
 # word2img
 
-Generate an image from a list of words using OpenAI's `gpt-image-1` model.
+Generate an image from a list of words using OpenAI's `gpt-image-1` model. Useful for remembering lists of words. 
 
 ## Requirements
 
@@ -58,3 +58,21 @@ Options:
 On first run, the tool downloads and caches the official EFF large wordlist at `~/.cache/word2img/eff_large_wordlist.txt`.
 Default mode is `loci`: one geographic memory-palace image with landmarks in strict passphrase order.
 All modes explicitly instruct the model to avoid rendering any text/letters in the image.
+
+## Examples
+
+English `effgen` output:
+
+Passphrase: `relish negligee exhaust sinuous browbeat twister`
+
+![English effgen example](img/relish-negligee-exhaust-sinuous-browbeat-twister.png)
+
+Norwegian `effgen --lang no` output:
+
+Passphrase: `diagnoser selleri mened ruiner løve rutine`
+
+![Norwegian effgen example 1](img/diagnoser-selleri-mened-ruiner-løve-rutine.png)
+
+Passphrase: `stikkende utpressing uprøvd ubehag jubel utvikle`
+
+![Norwegian effgen example 2](img/stikkende-utpressing-uprøvd-ubehag-jubel-utvikle.png)
