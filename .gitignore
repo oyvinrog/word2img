@@ -43,3 +43,8 @@ output/
 *.jpeg
 *.bmp
 *.tmp
+!img/
+!img/*.png
+!img/*.jpg
+!img/*.jpeg
+!img/*.bmp
