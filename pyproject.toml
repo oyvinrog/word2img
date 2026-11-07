@@ -18,6 +18,10 @@ word2img = "word2img.__main__:main"
 word2img-effgen = "word2img.effgen:main"
 
 [project.optional-dependencies]
+sign-language = [
+  "Pillow>=10.0.0",
+  "imageio-ffmpeg>=0.5.0",
+]
 dev = [
   "pytest>=8.0.0",
 ]
